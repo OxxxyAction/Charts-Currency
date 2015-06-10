@@ -1,0 +1,425 @@
+package dev.dmytro.testskills;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import android.app.ListActivity;
+import android.app.ProgressDialog;
+import android.content.Intent;
+import android.os.AsyncTask;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.ListAdapter;
+import android.widget.ListView;
+import android.widget.SimpleAdapter;
+import android.widget.TextView;
+import android.widget.Toast;
+
+public class MainActivity extends ListActivity {
+    private ProgressDialog pDialog;
+
+    // URL to get contacts JSON
+    private static String url = "https://api.privatbank.ua/p24api/exchange_rates?json&date=01.04.2015";
+
+    // JSON Node names
+    private static final String DATE = "date";
+    private static final String BANK = "bank";
+    private static final String BASE_CURRENCY = "baseCurrency";
+    private static final String BASE_CURRENCY_LIT = "baseCurrencyLit";
+    private static final String EXCHANGE_RATE = "exchangeRate";
+    private static final String BASECURRENCY = "baseCurrency";
+    private static final String CURRENCY = "currency";
+    private static final String SALE_RATE_NB = "saleRateNB";
+    private static final String PURCHASE_RATE_NB = "purchaseRateNB";
+    private static final String SALE_RATE_ = "saleRate";
+    private static final String PURCHASE_RATE = "purchaseRate";
+    ArrayList<Float> CHF;
+    ArrayList<Float> EUR;
+    ArrayList<Float> GPB;
+    ArrayList<Float> PLZ;
+    ArrayList<Float> RUB;
+    ArrayList<Float> SEK;
+    ArrayList<Float> USD ;
+    ArrayList<Float> XAU;
+    ArrayList<Float> CAD;
+    String [] Dates;
+
+    // contacts JSONArray
+    JSONArray CurrnecyRateArr = null;
+
+    // Hashmap for ListView
+    ArrayList<HashMap<String, String>> CurrencyRateList;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        CurrencyRateList = new ArrayList<HashMap<String, String>>();
+
+        String temp = url.substring(url.length()-10,url.length());
+       //Log.d("ServiceHandler", temp);
+        //Log.d("ServiceHandler", temp.substring(0,2) + " _ " + temp.substring(3,5) + "_" + temp.substring(temp.length()-4,temp.length()));
+        //Log.d("ServiceHandler", ArrayStringsDates("03.03.2015","13.04.2015")+"");
+
+        ListView lv = getListView();
+
+        // Listview on item click listener
+        lv.setOnItemClickListener(new OnItemClickListener() {
+
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view,
+                                    int position, long id) {
+                // getting values from selected ListItem
+                String name = ((TextView) view.findViewById(R.id.name))
+                        .getText().toString();
+                /*
+                String cost = ((TextView) view.findViewById(R.id.email))
+                        .getText().toString();
+                String description = ((TextView) view.findViewById(R.id.mobile))
+                        .getText().toString();
+*/
+                // Starting single contact activity
+                Intent in = new Intent(getApplicationContext(),
+                        GraphicsActivity.class);
+               //Log.d("HZ", EUR.size()+"");
+                ArrayList<Float> temparr = returnArray(name);
+                float[] testtest = new float[temparr.size()];
+
+                for(int i =0 ; i < testtest.length; i++){
+                    testtest[i] = temparr.get(i);
+                    Log.d("test",testtest[i] + "");
+                }
+
+                //dima loh
+                in.putExtra("valuesArr", testtest);
+                in.putExtra("dateArr", Dates);
+                startActivity(in);
+
+            }
+        });
+
+        // Calling async task to get json
+        new GetContacts().execute();
+    }
+
+    public int AddingZeroToDate(String date){
+        switch(date.length()){
+            case 1:
+                date = "0" + date;
+                return Integer.parseInt(date);
+            case 2:
+                return Integer.parseInt(date);
+            default:
+                return Integer.parseInt(date);
+        }
+    }
+
+    public String[] ArrayStringsDates(String startDate, String endDate){
+        int dayStart = 0, dayEnd = 0, monthStart=0, monthEnd=0, yearStart=0, yearEnd=0;
+        String[] TempStartDate = startDate.split("\\.");
+        String[] TempEndDate = endDate.split("\\.");
+
+        dayStart = AddingZeroToDate(TempStartDate[0]);
+        dayEnd = AddingZeroToDate(TempEndDate[0]);
+        monthStart = AddingZeroToDate(TempStartDate[1]);
+        monthEnd = AddingZeroToDate(TempEndDate[1]);
+        yearStart = AddingZeroToDate(TempStartDate[2]);
+        yearEnd = AddingZeroToDate(TempEndDate[2]);
+
+        /*dayStart = Integer.parseInt(startDate.substring(0,2));
+        dayEnd = Integer.parseInt(endDate.substring(0,2));
+        monthStart = Integer.parseInt(startDate.substring(3,5));
+        monthEnd = Integer.parseInt(endDate.substring(3,5));
+        yearStart = Integer.parseInt(startDate.substring(startDate.length() - 4, startDate.length()));
+        yearEnd = Integer.parseInt(endDate.substring(endDate.length()-4,endDate.length()));*/
+        int length=0;
+        for(int j = yearStart; j<= yearEnd; j++)
+        for(int i=monthStart; i<= monthEnd; i++){
+            if(i==monthStart)
+                length += GetCountOfDays(monthStart, j) - dayStart;
+            else if(i==monthEnd)
+                length += dayEnd;
+            else
+                length += GetCountOfDays(i,j);
+        }
+        ArrayList<String> arr = new ArrayList<String>();
+
+       for(int y = yearStart; y <= yearEnd; y++)
+        for(int m = monthStart; m <= monthEnd; m++)
+            for(int i=1; i<= GetCountOfDays(m,y); i++){
+                if(m==monthStart){
+                    String tempString = If10((dayStart-1+i))+"."+If10(m)+"."+y;
+                    arr.add(tempString);
+                    if((i+dayStart-1)==GetCountOfDays(m,y)){
+                        i=GetCountOfDays(m,y)+1;
+                    }
+                    }
+                else if(m==monthEnd){
+                    String tempString = If10((i))+"."+If10(m)+"."+y;
+                    arr.add(tempString);
+                    if(i==dayEnd){
+                        i=GetCountOfDays(m,y)+1;
+                    }
+
+                }
+                else{
+                    String tempString = If10((i))+"."+If10(m)+"."+y;
+                    arr.add(tempString);
+                }
+
+            }
+        Log.d("ServiceHandler", arr.size()+"_" + length);
+        String [] tmp  = new String[arr.size()];
+
+
+        for(int i = 0 ; i < tmp.length; i++){
+            tmp[i] = arr.get(i);
+
+            Log.d("ServiceHandler",tmp[i]);
+        }
+
+       return tmp;
+    }
+
+    public ArrayList<Float> returnArray(String name){
+
+        switch(name){
+            case "CHF":
+                return CHF;
+            case "EUR":
+                Log.d("test", "eur");
+                return EUR;
+            case "GPB":
+                return GPB;
+            case "PLZ":
+                return PLZ;
+            case "RUB":
+                return RUB;
+            case "SEK":
+                return SEK;
+            case "USD":
+                return USD;
+            case "XAU":
+                return XAU;
+            case "CAD":
+                return CAD;
+            default:
+                Log.d("test", "default");
+                return null;
+        }
+    }
+
+    public  String If10(int value){
+        if(value<10)
+            return "0"+value;
+        else
+            return value+"";
+    }
+
+    public int GetCountOfDays(int month, int year){
+        int count =0;
+        switch (month){
+            case 4:
+            case 6:
+            case 9:
+            case 11:
+                count = 30;
+                break;
+            case 2:
+                if(year%4==0)
+                    count = 29;
+                else
+                count = 28;
+                break;
+            default:
+                count = 31;
+        }
+        return count;
+    }
+    /**
+     * Async task class to get json by making HTTP call
+     * */
+    private class GetContacts extends AsyncTask<Void, Void, Void> {
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            // Showing progress dialog
+            pDialog = new ProgressDialog(MainActivity.this);
+            pDialog.setMessage("Please wait...");
+            pDialog.setCancelable(false);
+            pDialog.show();
+
+        }
+
+        @Override
+        protected Void doInBackground(Void... arg0) {
+            // Creating service handler class instance
+            ServiceHandler sh = new ServiceHandler();
+                 CHF = new ArrayList<Float>();
+                 EUR = new ArrayList<Float>();
+                 GPB = new ArrayList<Float>();
+                 PLZ = new ArrayList<Float>();
+                 RUB = new ArrayList<Float>();
+                 SEK = new ArrayList<Float>();
+                 USD = new ArrayList<Float>();
+                 XAU = new ArrayList<Float>();
+                 CAD = new ArrayList<Float>();
+            Intent intent = getIntent();
+            Dates = ArrayStringsDates(intent.getStringExtra("StartDate"),intent.getStringExtra("EndDate"));
+            for(int j = 0; j < Dates.length; j++){
+
+
+            // Making a request to url and getting response
+            String jsonStr = sh.makeServiceCall("https://api.privatbank.ua/p24api/exchange_rates?json&date="+Dates[j], ServiceHandler.GET);
+
+            Log.d("Response: ", "> " + jsonStr);
+
+            if (jsonStr != null) {
+                try {
+                    JSONObject jsonObj = new JSONObject(jsonStr);
+
+                    // Getting JSON Array node
+                    CurrnecyRateArr = jsonObj.getJSONArray(EXCHANGE_RATE);
+                    Log.d("ServiceHandler", "zashlo v try");
+                    // looping through All Contacts
+
+                    //
+                 /*   Bundle bundle = getIntent().getExtras();
+                    for (int i = 0; i < bundle.getInt("lengthCAD"); i++)
+                    {
+                        bundle.getFloat("SaleRateNB" + " CAD " + i, CAD.get(i));
+                        bundle.getFloat("PurchaseRateNB" + " CAD " + i, CAD.get(i + 1));
+                        bundle.getFloat("SaleRate" + " CAD " + i, CAD.get(i + 2));
+                        bundle.getFloat("PurchaseRate" + " CAD " + i, CAD.get(i + 3));
+                    }
+                    */
+                    //
+                    for (int i = 0; i < CurrnecyRateArr.length(); i++) {
+                        JSONObject c = CurrnecyRateArr.getJSONObject(i);
+                        switch(c.getString(CURRENCY)){
+                            case "CAD":
+                                CAD.add(Float.parseFloat(c.getString(SALE_RATE_NB)));
+                                CAD.add(Float.parseFloat(c.getString(PURCHASE_RATE_NB)));
+                                CAD.add(Float.parseFloat(c.getString(SALE_RATE_)));
+                                CAD.add(Float.parseFloat(c.getString(PURCHASE_RATE)));
+                                break;
+
+                            case "CHF":
+                                CHF.add(Float.parseFloat(c.getString(SALE_RATE_NB)));
+                                CHF.add(Float.parseFloat(c.getString(PURCHASE_RATE_NB)));
+                                CHF.add(Float.parseFloat(c.getString(SALE_RATE_)));
+                                CHF.add(Float.parseFloat(c.getString(PURCHASE_RATE)));
+                                break;
+                            case "EUR":
+                                EUR.add(Float.parseFloat(c.getString(SALE_RATE_NB)));
+                                EUR.add(Float.parseFloat(c.getString(PURCHASE_RATE_NB)));
+                                EUR.add(Float.parseFloat(c.getString(SALE_RATE_)));
+                                EUR.add(Float.parseFloat(c.getString(PURCHASE_RATE)));
+                                break;
+                            case "GPB":
+                                GPB.add(Float.parseFloat(c.getString(SALE_RATE_NB)));
+                                GPB.add(Float.parseFloat(c.getString(PURCHASE_RATE_NB)));
+                                GPB.add(Float.parseFloat(c.getString(SALE_RATE_)));
+                                GPB.add(Float.parseFloat(c.getString(PURCHASE_RATE)));
+                                break;
+                            case "PLZ":
+                                PLZ.add(Float.parseFloat(c.getString(SALE_RATE_NB)));
+                                PLZ.add(Float.parseFloat(c.getString(PURCHASE_RATE_NB)));
+                                PLZ.add(Float.parseFloat(c.getString(SALE_RATE_)));
+                                PLZ.add(Float.parseFloat(c.getString(PURCHASE_RATE)));
+                                break;
+                            case "RUB":
+                                RUB.add(Float.parseFloat(c.getString(SALE_RATE_NB)));
+                                RUB.add(Float.parseFloat(c.getString(PURCHASE_RATE_NB)));
+                                RUB.add(Float.parseFloat(c.getString(SALE_RATE_)));
+                                RUB.add(Float.parseFloat(c.getString(PURCHASE_RATE)));
+                                break;
+                            case "SEK":
+                                SEK.add(Float.parseFloat(c.getString(SALE_RATE_NB)));
+                                SEK.add(Float.parseFloat(c.getString(PURCHASE_RATE_NB)));
+                                break;
+                            case "USD":
+                                USD.add(Float.parseFloat(c.getString(SALE_RATE_NB)));
+                                USD.add(Float.parseFloat(c.getString(PURCHASE_RATE_NB)));
+                                USD.add(Float.parseFloat(c.getString(SALE_RATE_)));
+                                USD.add(Float.parseFloat(c.getString(PURCHASE_RATE)));
+                                break;
+                            case "UAH":
+                                break;
+                            case "XAU":
+                                XAU.add(Float.parseFloat(c.getString(SALE_RATE_NB)));
+                                XAU.add(Float.parseFloat(c.getString(PURCHASE_RATE_NB)));
+                                break;
+
+
+                        }
+                        if(j==0){
+                        HashMap<String, String> temp = new HashMap<String, String>();
+                        String currency = c.getString(CURRENCY);
+                        temp.put(CURRENCY,currency);
+                        CurrencyRateList.add(temp);}
+/*
+                        HashMap<String, String> temp = new HashMap<String, String>();
+
+                        String baseCurrency = c.getString(BASECURRENCY);
+                        String currency = c.getString(CURRENCY);
+                        String saleRateNB = c.getString(SALE_RATE_NB);
+                        String purchaseRateNB = c.getString(PURCHASE_RATE_NB);
+
+                        // tmp hashmap for single contact
+
+                        temp.put(BASE_CURRENCY, baseCurrency);
+                        temp.put(CURRENCY, currency);
+                        temp.put(SALE_RATE_NB, saleRateNB);
+                        temp.put(PURCHASE_RATE_NB, purchaseRateNB);
+
+                        if(!c.getString(CURRENCY).equals("SEK")&& !c.getString(CURRENCY).equals("UAH") && !c.getString(CURRENCY).equals("XAU")){
+                            String saleRate = c.getString(SALE_RATE_);
+                            String purchaseRate = c.getString(PURCHASE_RATE);
+                            temp.put(SALE_RATE_, saleRate);
+                            temp.put(PURCHASE_RATE, purchaseRate);
+                        }
+                        // adding contact to contact list
+                        CurrencyRateList.add(temp);
+                        */
+                    }
+                } catch (JSONException e) {
+                    Log.d("HZ", "exception" + Dates[j]+"__");
+                    e.printStackTrace();
+                }
+            } else {
+                Log.d("ServiceHandler", "Couldn't get any data from the url");
+
+            }
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void result) {
+            super.onPostExecute(result);
+            // Dismiss the progress dialog
+            if (pDialog.isShowing())
+                pDialog.dismiss();
+            /**
+             * Updating parsed JSON data into ListView
+             * */
+            ListAdapter adapter = new SimpleAdapter(
+                    MainActivity.this, CurrencyRateList,
+                    R.layout.list_item, new String[] { CURRENCY }, new int[] { R.id.name });
+
+            setListAdapter(adapter);
+        }
+
+    }
+
+}
